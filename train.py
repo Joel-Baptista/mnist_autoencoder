@@ -3,29 +3,36 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, random_split
-
+import yaml
 
 from autoencoders.mlp import MLP_AUTOENC
 from utils.common import log_to_csv
+from utils.common import DotDict
 
-batch_size = 256
-learning_rate = 1e-4
-num_epochs = 100
-validation_split = 0.2
-encode_layers = [128, 64]
-decode_layers = [64, 128]
-latent_dim = 64
-use_spectral_norm = False
-use_bn = True
-use_layer_norm = False
-randomize_input = False
-mean = 0.0
-std = 0.1
-device_config = "cuda:1"
+# batch_size = 256
+# learning_rate = 1e-4
+# num_epochs = 100
+# validation_split = 0.2
+# encode_layers = [128, 64]
+# decode_layers = [64, 128]
+# latent_dim = 64
+# use_spectral_norm = False
+# use_bn = True
+# use_layer_norm = False
+# randomize_input = True
+# mean = 0.0
+# std = 0.2
+
 log_file = 'results/autoencoder_mnist.csv'
+device_config = "cuda:1"
+path = "results/config.yaml"
 
 def main():
 
+    with open(path) as f:
+        cfg = DotDict(yaml.load(f, Loader=yaml.loader.SafeLoader))
+    # Load the trained model
+    print(cfg)
     if torch.cuda.is_available():
         print("Using CUDA")
         device = torch.device(device_config)
@@ -41,28 +48,19 @@ def main():
 
     dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
 
-    train_size = int((1 - validation_split) * len(dataset))
+    train_size = int((1 - cfg.train.validation_split) * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=cfg.train.batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=cfg.train.batch_size, shuffle=False)
 
     # Initialize the model, loss function, and optimizer
-    model = MLP_AUTOENC(learning_rate, 784, latent_dim, 
-                        encode_layers, 
-                        decode_layers, 
-                        use_spectral_norm=use_spectral_norm,
-                        use_bn=use_bn,
-                        use_layer_norm=use_layer_norm,
-                        randomize_input=randomize_input,
-                        mean=mean,
-                        std=std
-                        ).to(device)
+    model = MLP_AUTOENC(**cfg.alg).to(device)
     
 
     # Training loop
-    for epoch in range(num_epochs):
+    for epoch in range(cfg.train.num_epochs):
         train_loss = 0
         val_loss = 0
         for data in train_loader:
@@ -72,8 +70,8 @@ def main():
             img = img.to(device)
 
             # Forward pass
-            output, _ = model(img)
-            loss = model.loss(output, img)  # reconstruction loss
+            output, red_vec = model(img)
+            loss = model.loss(output, img, red_vec)  # reconstruction loss
             
             # Backward pass and optimization
             model.optim.zero_grad()
@@ -92,14 +90,14 @@ def main():
                 
                 img = img.to(device)
 
-                output, _ = model(img)
-                loss = model.loss(output, img)
+                output, red_vec = model(img)
+                loss = model.loss(output, img, red_vec)
                 val_loss += loss.cpu().item()
         
         avg_val_loss = val_loss / len(val_loader)
 
 
-        print(f'Epoch [{epoch}/{num_epochs}], Loss: {avg_loss:.4f}, Vald Loss: {avg_val_loss:.4f}')
+        print(f'Epoch [{epoch}/{cfg.train.num_epochs}], Loss: {avg_loss:.4f}, Vald Loss: {avg_val_loss:.4f}')
         
         # Log the epoch and average loss to CSV
         log_to_csv(epoch, avg_loss, avg_val_loss, log_file)

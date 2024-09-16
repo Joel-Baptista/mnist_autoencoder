@@ -5,11 +5,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import yaml
+import os
 
 from autoencoders.mlp import MLP_AUTOENC
 from utils.common import DotDict
 
-path = 'results/models/baseline3'
+path = 'results/models/random1'
+samples = 10
+
 
 # Set seaborn theme for prettier plots
 sns.set_theme(style="whitegrid")
@@ -61,6 +64,9 @@ def test_and_visualize(model, test_loader, num_samples=10):
         axs[i, 1].set_title('Reconstruction', fontsize=12)
 
     plt.tight_layout()
+    output_filename = os.path.join(path, f'test.png')
+    plt.savefig(output_filename, dpi=300, bbox_inches='tight')
+    
     plt.show()
 
 
@@ -69,7 +75,7 @@ def main():
     with open(path + "/config.yaml") as f:
         cfg = DotDict(yaml.load(f, Loader=yaml.loader.SafeLoader))
     # Load the trained model
-    model = load_model(path, cfg)
+    model = load_model(path, cfg.alg)
 
     # Define the transformation (note: no noise is added for testing)
     transform = transforms.Compose([
@@ -79,9 +85,9 @@ def main():
 
     # Load the test dataset
     test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
-    test_loader = DataLoader(test_dataset, batch_size=10, shuffle=False) 
+    test_loader = DataLoader(test_dataset, batch_size=samples, shuffle=False) 
 
-    test_and_visualize(model, test_loader, num_samples=5)
+    test_and_visualize(model, test_loader, num_samples=samples)
 
 if __name__ == '__main__':
     main()

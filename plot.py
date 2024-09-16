@@ -2,6 +2,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os
+import numpy as np
 
 # Set a Seaborn theme for aesthetics
 sns.set_theme(style="whitegrid")
@@ -25,12 +26,18 @@ for filename in os.listdir(folder_path):
         
         # Plotting using seaborn with enhanced styling
         plt.figure(figsize=(12, 8))
-        sns.lineplot(x=x_column, y='Value', hue='Variable', data=df_melted, marker='o', palette='tab10')
+        sns.lineplot(x=x_column, y='Value', hue='Variable', data=df_melted, marker='', palette='tab10')
 
         # Customize the title and labels
         plt.title(f'{filename}', fontsize=16, weight='bold', color='darkblue', pad=20)
         plt.xlabel(x_column, fontsize=14, weight='bold', color='darkblue')
         plt.ylabel('Values', fontsize=14, weight='bold', color='darkblue')
+
+        plt.ylim(0, 0.8)  # Set the y-axis from 0 to 0.8
+        plt.yticks(np.arange(0, 0.81, 0.025))  # Set y-ticks from 0 to 0.8, with step 0.02
+
+        # plt.xticks(np.arange(df[x_column].min(), df[x_column].max() + 0.05, 1))  # Set x-ticks with step 0.02
+        
         
         # Improve the legend
         plt.legend(title='Variables', title_fontsize='13', fontsize='11', loc='upper right', fancybox=True, framealpha=0.7)
