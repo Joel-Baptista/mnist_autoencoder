@@ -18,12 +18,21 @@ latent_dim = 64
 use_spectral_norm = False
 use_bn = True
 use_layer_norm = False
-randomize_input = True
+randomize_input = False
 mean = 0.0
 std = 0.1
+device_config = "cuda:1"
 log_file = 'results/autoencoder_mnist.csv'
 
 def main():
+
+    if torch.cuda.is_available():
+        print("Using CUDA")
+        device = torch.device(device_config)
+    else:
+        print("Using CPU")
+        device = torch.device("cpu")
+
     # Load the MNIST dataset
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -49,7 +58,7 @@ def main():
                         randomize_input=randomize_input,
                         mean=mean,
                         std=std
-                        )
+                        ).to(device)
     
 
     # Training loop
@@ -60,6 +69,8 @@ def main():
             img, _ = data  # we only need the images, not the labels
             img = img.view(img.size(0), -1)  # flatten the images
             
+            img = img.to(device)
+
             # Forward pass
             output, _ = model(img)
             loss = model.loss(output, img)  # reconstruction loss
@@ -69,7 +80,7 @@ def main():
             loss.backward()
             model.optim.step()
 
-            train_loss += loss.item()
+            train_loss += loss.cpu().item()
         
         avg_loss = train_loss / len(train_loader)
 
@@ -79,9 +90,11 @@ def main():
                 img, _ = data  # we only need the images
                 img = img.view(img.size(0), -1)  # flatten the images
                 
+                img = img.to(device)
+
                 output, _ = model(img)
                 loss = model.loss(output, img)
-                val_loss += loss.item()
+                val_loss += loss.cpu().item()
         
         avg_val_loss = val_loss / len(val_loader)
 
